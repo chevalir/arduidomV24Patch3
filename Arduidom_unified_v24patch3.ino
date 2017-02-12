@@ -73,18 +73,7 @@ IPAddress CNF_IP_JEEDOM (192, 168, 10, 43); // ADRESSE IP JeeDom
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 // PARTIE DEFINITION
 // Vos #define et autre ici
-/**
-** @@RC 
-**/
-#include "CustomDef.h"
-bool RFGroup = false;
-byte RFOnOff = 0;
-int RFDevice = 0;
-#define NETCODE //
 
-/*
-CPzzrtiioozzzzzzzzzzzzcczzddccczzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcccccccccccccccc_OK
-*/
 
 
 
