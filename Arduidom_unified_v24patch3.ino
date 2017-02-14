@@ -32,16 +32,16 @@
 //
 #define CNF_NETWORK 0 // Mettre à 1 pour Activation du Shield Ethernet sur Arduino ( consomme 35% Firmware / 12% RAM sur un UNO)
 //
-#define CNF_DHT 0 // Mettre à 0 pour desactiver les DHT pour gagner en espace Programme/Ram surtout sur les petits arduino ( 4,9% Firmware / 6,3% RAM sur un UNO)
+#define CNF_DHT 1 // Mettre à 0 pour desactiver les DHT pour gagner en espace Programme/Ram surtout sur les petits arduino ( 4,9% Firmware / 6,3% RAM sur un UNO)
 //
-#define CNF_RADIO 1 // Mettre à 0 pour desactiver la RADIO pour gagner en espace Programme/Ram surtout sur les petits arduino ( consomme 18,8% Firmware / 23,9% RAM sur un UNO )
+#define CNF_RADIO 0 // Mettre à 0 pour desactiver la RADIO pour gagner en espace Programme/Ram surtout sur les petits arduino ( consomme 18,8% Firmware / 23,9% RAM sur un UNO )
 //
 #if (CNF_NETWORK == 1) // NE PAS MODIFIER CETTE LIGNE, pour (dés)activer le réseau, modifier la ligne #define CNF_NETWORK 0 !
     #include <SPI.h>
     #include <Ethernet.h>
-IPAddress CNF_IP_ARDUIN (192, 168, 10, 191); // ADRESSE IP DE L'ARDUINO, A ADAPTER A VOTRE RESEAU
+    IPAddress CNF_IP_ARDUIN (192, 168, 1, 191); // ADRESSE IP DE L'ARDUINO, A ADAPTER A VOTRE RESEAU
 //
-IPAddress CNF_IP_JEEDOM (192, 168, 10, 43); // ADRESSE IP JeeDom
+    IPAddress CNF_IP_JEEDOM (192, 168, 1, 2); // ADRESSE IP JeeDom
 //
     #define CNF_PORT_JEEDOM 80 // Port d'ecoute Jeedom
 //
@@ -57,7 +57,7 @@ IPAddress CNF_IP_JEEDOM (192, 168, 10, 43); // ADRESSE IP JeeDom
 // DELAI D'EXECUTION ET MISE A JOUR DES CUSTOMS (ATTENTION A NE PAS METTRE TROP BAS POUR NE PAS SURCHARGER L'ARDUINO)
 #define CUSTOM_DELAY 30000 // Temps en MILLISECONDES ou est executé la partie Customs
 //
-//#define DHT_DELAY 45000 // Temps en MILLISECONDES entre les captures et envoi des valeurs de sondes DHT
+#define DHT_DELAY 45000 // Temps en MILLISECONDES entre les captures et envoi des valeurs de sondes DHT
 // EMETEUR RADIO
 #define RADIO_REPEATS 10 // Nombre de repetitions des messages Radio (1 a 20, augmenter en cas de soucis de transmission vers prises)
 //
@@ -67,7 +67,7 @@ IPAddress CNF_IP_JEEDOM (192, 168, 10, 43); // ADRESSE IP JeeDom
 //
 // DELAY : ATTENTION, une valeur trop petite peut encombrer le port serie avec les parasites !!!
 #define CNF_DELAY_D_SENDS 200 // Delai entre chaque mise a jour d'entrees vers jeedom
-#define CNF_DELAY_A_SENDS 200 // Delai entre chaque mise a jour d'entrees vers jeedom ( default 1000 @@RC set to 200 )
+#define CNF_DELAY_A_SENDS 1000 // Delai entre chaque mise a jour d'entrees vers jeedom
 //--------------------------------------------------------------------------------------------------------------------------------------------------
 // -------- LES SONDES DHT se configurent désormais directement dans la configuration des pins du plugin -------------------------------------------
 //--------------------------------------------------------------------------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ EthernetServer server(58174);
 #elif defined(__AVR_ATmega328P__)
     #define CNF_NB_DPIN 14
     #define CNF_NB_APIN 6
-    #define CNF_NB_CPIN 32 // Extensible à 128 Maximum @@RC set to 32
+    #define CNF_NB_CPIN 8 // Extensible à 128 Maximum
 #elif defined(__AVR_ATmega32U4__)
     #define CNF_NB_DPIN 14
     #define CNF_NB_APIN 6
@@ -152,7 +152,6 @@ unsigned int  OldAValue[CNF_NB_APIN]; // anciennes valeurs pour detection change
 float         OldCValue[CNF_NB_CPIN]; // anciennes valeurs pour customs
 float         CustomValue[CNF_NB_CPIN]; // valeurs en cours pour customs
 unsigned long LastSend[CNF_NB_DPIN + CNF_NB_APIN + CNF_NB_CPIN]; // anciennes valeurs pour detection changements
-
 byte NewValue = 0; // tampon nouvelle valeurs pour detection changements
 unsigned int NewAValue = 0; // tampon nouvelle valeurs pour detection changementsbyte LenSerial;
 float NewCValue = 0;
@@ -281,19 +280,14 @@ void loop() {
             #if defined(DBG_PRINT_SERIAL)
 				Serial.print(F("DBG_todo:")); Serial.println(DataSerie);
             #endif
-
 				if (DataSerie[0] == 'S' && DataSerie[1] == 'P') { // ************************************************************ SP = Set Pin
-				    Serial.print("SP:("); //@@
+				    Serial.print("SP:("); //@@RC
 				    Serial.print(DataSerie[4]);
 					Serial.println(")");
-
+					//@@RC
 					request = DataSerie;
 					pinToSet = 10 * int(DataSerie[2] - '0'); // dizaines
 					pinToSet += int(DataSerie[3] - '0'); // unites
-					/* @@RC
-				    Serial.print("pin:("); Serial.print(pinToSet); Serial.print(") type("); Serial.print(pinmode[pinToSet]); Serial.println(")");
-					if (pinToSet == 3) pinmode[pinToSet] = 't';
-					*/ // @@RC
 					if (pinmode[pinToSet] == 'o' || pinmode[pinToSet] == 'i' || pinmode[pinToSet] == 'y') { // also on mode i for pull up of inputs
 						if (DataSerie[4] == '0') {
 							digitalWrite(pinToSet, LOW);
@@ -318,6 +312,7 @@ void loop() {
 						digitalWrite(pinToSet, 0);
 						check = true;
 						int pintime = 1000 * int(DataSerie[4] - '0') + 100 * int(DataSerie[5] - '0') + 10 * int(DataSerie[6] - '0') + int(DataSerie[7] - '0');
+
 						TimerDelays[pinToSet] = millis() + pintime;
 						TimerDelayAction[pinToSet] = 'u';
 					}
@@ -383,7 +378,7 @@ void loop() {
 							mySwitch.sendTriState(DataSerie);
 							check = true;
 						}
-                        if (DataSerie[4] == 'H') { //// Radio Mode Chacon DIO ex:SP03H999999990112 
+                        if (DataSerie[4] == 'H') { //// Radio Mode Chacon DIO ex:SP03H999999990112
 							// Modifs par Chevalir
 							byte lenRequest = request.length();
 							DataSerie[lenRequest-4] = 0; // group char is not used so set 0 to limit the strtol function
@@ -398,8 +393,8 @@ void loop() {
 							}
                             check = true;
 						}
-						
-						
+
+
 						/*
 						if (DataSerie[4] == 'H') { //// Radio Mode Chacon DIO ex:H 05580042 0100
 							// Modifs par Chevalir
@@ -415,10 +410,7 @@ void loop() {
 							}
 							check = true;
 						}
-						
 						*/
-						
-						
 					}
                 #endif
 					Serial.print(request);
@@ -458,6 +450,7 @@ void loop() {
 						for (int i = 0; i < CNF_NB_CPIN; i++) {
 							EEPROM.write(CNF_NB_DPIN + CNF_NB_APIN + i, DataSerie[2 + CNF_NB_DPIN + CNF_NB_APIN + i]);    // CP......................cccccccc
 						}
+
 						ReloadEEPROM();
 						Serial.println(F("CP_OK"));
                     #if (CNF_NETWORK == 1)
@@ -484,7 +477,6 @@ void loop() {
 					Serial.print("PING_OK_V:");
 					// @@RC
 					Serial.println(int(ArduiDomVersion));
-					
                 #if (CNF_NETWORK == 1)
 					client.print("PING_OK_V:");
 					//client.print("PING_OK_V:" + byte(ArduiDomVersion));
@@ -655,7 +647,7 @@ void loop() {
 							//@@RC FIX6 CNF_NB_DPIN+i
 							if (millis() - LastSend[CNF_NB_DPIN+i] >
 							        CNF_DELAY_A_SENDS) { // pas d'envoi de valeur si moins de xxx ms avant la precedente
-								LastSend[CNF_NB_DPIN+i] = millis(); // @@RC FIX6 
+								LastSend[CNF_NB_DPIN+i] = millis(); // @@RC FIX6
                             #if (CNF_NETWORK == 1)
 								data = data + (CNF_NB_DPIN + i);
 								data = data + "=";
@@ -691,12 +683,12 @@ void loop() {
 							if (CCompare > CNF_CPINS_DELTA) {
 								cChange = 1;
 							}
-						}					
+						}
 					}
 					if ( cChange == 1 ) {
 						//if (ForceRefreshData || NewCValue != OldCValue[i] ) {
 							// @@RC FIX6 bug LastSend[i] replaced by  LastSend[CNF_NB_DPIN + CNF_NB_APIN + i]
-							if ( ForceRefreshData 
+							if ( ForceRefreshData
 								|| ( millis() - LastSend[CNF_NB_DPIN + CNF_NB_APIN + i] > CNF_DELAY_A_SENDS) ) { // pas d'envoi de valeur si moins de xxx ms avant la precedente
 								LastSend[CNF_NB_DPIN + CNF_NB_APIN + i] = millis(); // @@RC bug FIX6 CNF_NB_DPIN + CNF_NB_APIN + i
                             #if (CNF_NETWORK == 1)
@@ -736,7 +728,7 @@ void loop() {
             #else
 				if (mySwitch.available()) {
             #endif
-					//Serial.println(F("MySwitch Avail"));
+					Serial.println(F("MySwitch Avail"));
 					RFData = mySwitch.getReceivedValue();
 					RFAddr = mySwitch.getReceivedAddr();
 					RFProtocol = mySwitch.getReceivedProtocol();
@@ -809,6 +801,7 @@ void loop() {
 				}// End of mySwitch Reception
         #endif
 
+        #if (CNF_RADIO == 1)
 
 				if (millis() - LastRadioMessage > 500 && RAZRadio == false) { // envoie une mise a 0 du radio apres 500 millisecondes
 					RFDataLastSend = 0;
@@ -829,6 +822,7 @@ void loop() {
 				}
 
 				//Serial.print("[3]");
+        #endif
 
         #if (CNF_DHT == 1)
 				if (DHT_QTY > 0) { // ************************************************************************************* GESTION DES SONDES DHT
@@ -866,7 +860,7 @@ void loop() {
 						#endif */
                 #endif
 						Serial.print("DHT:");
-						/* */ data = "";
+						data = "";
 						for (int i = 1; i <= 16; i++) {
 							data += 500 + i;
 							if (DHTValue[i] != 999) {
@@ -1037,6 +1031,8 @@ void loop() {
 		} // EOF serialEvent()
 
 
+
+
 		void ReloadEEPROM() {
     #if (CNF_RADIO == 1)
 			mySwitch.disableReceive();
@@ -1048,12 +1044,12 @@ void loop() {
 				dhtpin[i] = 0;
 			}
     #endif
-    
+
 			//@@RC workarround of bug FIX17 STRANGE BUG IN MEMORY
 			for (byte td= 0; td < CNF_NB_DPIN; td++) {
 				TimerDelays[td] = 0;
 			}
-    
+
 			for (int i = 2; i < CNF_NB_DPIN + CNF_NB_APIN + CNF_NB_CPIN; i++) {
 				pinmode[i] = EEPROM.read(i); // Pin Modes
         #if defined(DBG_PRINT_CP)
@@ -1074,7 +1070,7 @@ void loop() {
 					}
         #endif
 					if (pinmode[i] == 'z') {
-						//TimerDelays[i] = 0; @@RC  FIX17 STRANGE BUG IN MEMORY 
+						//TimerDelays[i] = 0; @@RC  FIX17 STRANGE BUG IN MEMORY
             #if defined(DBG_PRINT_CP)
 						Serial.print(F("DIS"));
             #endif
@@ -1204,18 +1200,8 @@ void loop() {
 				for (int i = 0; i < 20; i++) {
 					CNF_API[i] = EEPROM.read(200 + i); // Cle API Jeedom
 				}
-				//@@RC 
-				/*
-			    for (int i = 2; i < CNF_NB_DPIN + CNF_NB_APIN + CNF_NB_CPIN; i++) {
-
-			    	Serial.print("p["); Serial.print(i); Serial.print("]("); Serial.print(pinmode[i]); Serial.print(")"); //@@RC
-				}
-				Serial.print("");*/
-				//@@RC fin
-				
 			}// END OF ReloadEEPROM()
-			
-			
+
 			void InitEEPROM() {
 				EEPROM.write(1, ArduiDomVersion); // Pin Mode
 				for (int i = 2; i < 400; i++) {
@@ -1236,56 +1222,51 @@ void loop() {
 			// Votre partie "setup" perso ici (ne s'executera qu'une fois au demarrage de l'arduino)
 			//
 
+void setupHook() {
 
-			/**
-			** Add your custom code here,
-			** Method call inside the setup
-			**
-			** @@RC setupHook
-			**/
-			void setupHook () {
-			} // setupHook
+			
 
+}
+//
+// Add your custom code here, Method call inside the main loop to manage custom values
+//
+// PLACER CI DESSOUS VOS COMMANDES PERSO POUR LES CUSTOMS (Executé toutes les 30 Secondes par défaut.
+//
 
-			/**
-			** Add your custom code here,
-			** Method call inside the RF reception
-			**
-			** return true if the normal process can continu
-			** PATH-C @@RC rfReceptionHook
-			**/
-			bool rfReceptionHook() {
-				bool ret = true;
-				// YOUR CUSTOM CODE HERE
-				return ret;
-			}
-
-
-
-
-			/**
-			** Add your custom code here,
-			** Method call when serial data received. 
-			**@@RC SerialHook
-			**/	
-			void serialHook() {
-			}
-
-
-			/**
-			** Add your custom code here,
-			** Method called inside the main loop to manage custom values
-			**
-			**@@RC customHook
-			**/
-			void customHook () {
-			}
+void customHook () {
+    // PARTIE LOOP : CustomValue[0 - 15] sont compatibles en negatifs ansi qu'en virgules ex: -12.4 ------ exemple : CustomValue[0] = CustomValue[1] + 1
+    // exemple : CustomValue[0] = CustomValue[1] + 1
 
 
 
 
 
+}
 
-			// do: CPzzrtyyooiizzzzzzzzzzcczzzzdczzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+//
+// Add your custom code here, Method call when serial data received.
+//
+// Cette méthode est appelée a chaque reception sur port USB et/ou Ethernet
+//
 
-// CPzzrtyioozzzzzzzzzzzzcccccccccccccccccccccccccczzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzcccccccccccccccc
+void serialHook() {
+
+
+
+}
+
+//
+// Add your custom code here, Method call inside the RF reception
+// return true if the normal process can be called
+//
+
+bool rfReceptionHook() {
+    bool ret = true;
+
+
+
+
+
+    return ret;
+}
+
